@@ -6,7 +6,6 @@ CloudCostIQ is a Python-based AWS cost analytics and optimization dashboard that
 
 ## 📸 Dashboard Preview
 
-> Add screenshots here:
 - Dashboard Overview  
 - Cost Trend Graph  
 - Service Breakdown Pie Chart  
