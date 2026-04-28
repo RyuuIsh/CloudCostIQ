@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CloudCostIQ</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <div>
+            <h1>CloudCostIQ</h1>
+            <p class="subtitle">AWS Cost Optimization Dashboard</p>
+        </div>
+
+        <div class="header-badge">
+            Live AWS Billing Insights
+        </div>
+    </div>
+
+    <div class="export-buttons">
+        <a href="/export/csv" class="btn btn-csv">Download CSV</a>
+        <a href="/export/pdf" class="btn btn-pdf">Download PDF</a>
+    </div>
+
+    <div class="alerts-box">
+        <h2>Cost Alerts</h2>
+
+        {% if alerts %}
+            {% for alert in alerts %}
+                <div class="alert alert-{{ alert.level }}">
+                    {{ alert.message }}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-success">
+                No major cost alerts right now. Your AWS usage looks controlled.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="alerts-box">
+        <h2>Cost Spike Detection</h2>
+
+        {% if spikes %}
+            {% for spike in spikes %}
+                <div class="alert alert-danger">
+                    🚨 {{ spike.message }}
+                    <br>
+                    Increase: {{ spike.increase_percentage }}%
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-success">
+                No unusual daily cost spikes detected.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="cards premium-cards">
+        <div class="card metric-card">
+            <span class="metric-badge safe">Current</span>
+            <h3>Month-to-Date Cost</h3>
+            <h2>${{ monthly_cost }}</h2>
+        </div>
+
+        <div class="card metric-card">
+            <span class="metric-badge warning">Forecast</span>
+            <h3>Forecasted Monthly Cost</h3>
+            <h2>${{ forecasted_cost }}</h2>
+        </div>
+
+        <div class="card metric-card">
+            <span class="metric-badge info">Services</span>
+            <h3>Total Services Used</h3>
+            <h2>{{ service_costs|length }}</h2>
+        </div>
+
+        <div class="card metric-card">
+            <span class="metric-badge danger">Top Cost</span>
+            <h3>Top Expensive Service</h3>
+            {% if service_costs %}
+                <h2>{{ service_costs[0].service }}</h2>
+                <p>${{ service_costs[0].cost }}</p>
+            {% else %}
+                <h2>No Data</h2>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-box polished-chart">
+            <div class="section-title">
+                <h2>Daily Cost Trend</h2>
+                <span>Line Chart</span>
+            </div>
+            <canvas id="dailyCostChart"></canvas>
+        </div>
+
+        <div class="chart-box polished-chart">
+            <div class="section-title">
+                <h2>Cost Distribution</h2>
+                <span>Pie Chart</span>
+            </div>
+            <canvas id="costPieChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-box polished-chart">
+        <div class="section-title">
+            <h2>Service-wise Cost Breakdown</h2>
+            <span>Bar Chart</span>
+        </div>
+        <canvas id="serviceCostChart"></canvas>
+    </div>
+
+    <div class="table-box">
+        <h2>Optimization Suggestions</h2>
+
+        {% if recommendations %}
+            <div class="recommendation-list">
+                {% for rec in recommendations %}
+                    <div class="recommendation-card">
+                        <div>
+                            <span class="severity severity-{{ rec.severity|lower }}">
+                                {{ rec.severity }}
+                            </span>
+                            <span class="rec-category">{{ rec.category }}</span>
+                        </div>
+                        <p>{{ rec.message }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="no-data">No optimization suggestions found right now.</p>
+        {% endif %}
+    </div>
+
+    <div class="table-box">
+        <h2>Service Cost Details</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Cost ($)</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for item in service_costs %}
+                <tr>
+                    <td>{{ item.service }}</td>
+                    <td>${{ item.cost }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <footer class="footer">
+        <p>CloudCostIQ · Built with Flask, Boto3, AWS Cost Explorer API and Chart.js</p>
+    </footer>
+
+</div>
+
+<script>
+    const dailyCosts = {{ daily_costs | tojson }};
+    const serviceCosts = {{ service_costs | tojson }};
+
+    const serviceLabels = serviceCosts.map(item => item.service);
+    const serviceValues = serviceCosts.map(item => item.cost);
+
+    new Chart(document.getElementById("dailyCostChart"), {
+        type: "line",
+        data: {
+            labels: dailyCosts.map(item => item.date),
+            datasets: [{
+                label: "Daily Cost ($)",
+                data: dailyCosts.map(item => item.cost),
+                tension: 0.4,
+                fill: true
+            }]
+        }
+    });
+
+    new Chart(document.getElementById("serviceCostChart"), {
+        type: "bar",
+        data: {
+            labels: serviceLabels,
+            datasets: [{
+                label: "Service Cost ($)",
+                data: serviceValues
+            }]
+        }
+    });
+
+    new Chart(document.getElementById("costPieChart"), {
+        type: "pie",
+        data: {
+            labels: serviceLabels,
+            datasets: [{
+                label: "Cost Distribution",
+                data: serviceValues
+            }]
+        }
+    });
+</script>
+
+</body>
+</html>
